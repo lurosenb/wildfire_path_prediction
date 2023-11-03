@@ -5,9 +5,9 @@ import pandas as pd
 from tqdm import tqdm
 
 DATA_DIR = "./data"
-SAVE_DIR = "./data_filetered"
+SAVE_DIR = "./data_filtered"
 
-YEARS = [2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019]
+YEARS = [2015] # ...
 
 print(f"Loading VIIRS data...")
 viirs_data = gpd.read_file(os.path.join(DATA_DIR, "fire_archive_SV-C2_390000.shp"), engine="pyogrio")
@@ -23,6 +23,11 @@ for year in tqdm(YEARS, desc="Merging and filtering data by year"):
 
         pbar.set_description(f"Loading perimeter data for {year}")
         perimeter_data = gpd.read_file(os.path.join(DATA_DIR, "perimeters", f"US_HIST_FIRE_PERIM_{year}_DD83.shp"), engine="pyogrio")
+        pbar.set_description(f"Maintain only largest perimeter for each uniquefire.")
+        perimeter_data['area'] = perimeter_data.geometry.area
+        indices_of_largest = perimeter_data.groupby('uniquefire')['area'].idxmax()
+        perimeter_data = perimeter_data.loc[indices_of_largest]
+        perimeter_data = perimeter_data.drop(columns=['area'])
         pbar.update(1)
 
         pbar.set_description("Joining VIIRS and perimeter data")
@@ -38,9 +43,9 @@ for year in tqdm(YEARS, desc="Merging and filtering data by year"):
 
         pbar.set_description("Computing mean observation time per perimeter")
         average_observation_day_by_perimeter = {}
-        for perimeter in joined_data["FID"].unique():
+        for perimeter in joined_data["uniquefire"].unique():
 
-            date_times = joined_data[joined_data['FID'] == perimeter]['date_time']
+            date_times = joined_data[joined_data['uniquefire'] == perimeter]['date_time']
             value_counts = date_times.value_counts()
             average_obs_day = (value_counts.index.day_of_year * value_counts).sum() / value_counts.sum()
 
@@ -53,7 +58,7 @@ for year in tqdm(YEARS, desc="Merging and filtering data by year"):
         pbar.update(1)
 
         pbar.set_description("Mapping observations to perimeters")
-        observation_id_to_perimeters = joined_data.groupby("observation_id")["FID"].apply(list).to_dict()
+        observation_id_to_perimeters = joined_data.groupby("observation_id")["uniquefire"].apply(list).to_dict()
         pbar.update(1)
 
         def find_temporally_closest_perimeter(observation_id):
@@ -72,12 +77,12 @@ for year in tqdm(YEARS, desc="Merging and filtering data by year"):
 
                 if avg_time_delta < best_avg_time_delta:
                     best_avg_time_delta = avg_time_delta
-                    best_perimeter_id = p   erimeter_id
+                    best_perimeter_id = perimeter_id
 
             return best_perimeter_id
         
         pbar.set_description("Filtering observations to nearest perimeter")
-        filtered_data = joined_data[joined_data["observation_id"].apply(find_temporally_closest_perimeter) == joined_data["FID"]]
+        filtered_data = joined_data[joined_data["observation_id"].apply(find_temporally_closest_perimeter) == joined_data["uniquefire"]]
         pbar.update(1)
 
         # Save the dataframe
