@@ -10,9 +10,8 @@ CELL_WIDTH = 375
 CELL_HEIGHT = 375
 PERFORM_COUNT = False
 
-service_account = 'ping-gee@ee-supercharge-naturesnotebook.iam.gserviceaccount.com'
-credentials = ee.ServiceAccountCredentials(service_account, 'ee-supercharge-naturesnotebook-5b165b3dae23.json')
-ee.Initialize(credentials)
+ee.Authenticate()
+ee.Initialize()
 
 perimeter_data_file = 'data/perimeters/US_HIST_FIRE_PERIM_2015_DD83.shp'
 perimeters = gpd.read_file(perimeter_data_file,  engine='pyogrio')
@@ -130,4 +129,4 @@ center = ee_geometries.iloc[idx_max].center.coordinates().getInfo()
 date_str = '2015-11-07'
 
 wind_sample = grab_wind_image_from_geometry(date_str, region)
-# print(wind_sample)
+print(wind_sample)

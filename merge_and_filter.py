@@ -23,7 +23,7 @@ for year in tqdm(YEARS, desc="Merging and filtering data by year"):
 
         pbar.set_description(f"Loading perimeter data for {year}")
         perimeter_data = gpd.read_file(os.path.join(DATA_DIR, "perimeters", f"US_HIST_FIRE_PERIM_{year}_DD83.shp"), engine="pyogrio")
-        
+
         pbar.set_description(f"Maintain only largest perimeter for each uniquefire.")
         perimeter_data['area'] = perimeter_data.geometry.area
         indices_of_largest = perimeter_data.groupby('uniquefire')['area'].idxmax()
